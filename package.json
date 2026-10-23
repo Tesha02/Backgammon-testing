@@ -1,15 +1,22 @@
 {
   "name": "tests",
   "version": "1.0.0",
-  "description": "",
+  "description": "Playwright API tests for the local Backgammon application",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "test": "playwright test --project=api",
+    "test:api": "playwright test --project=api",
+    "test:ui-mode": "playwright test --project=api --ui",
+    "typecheck": "tsc --noEmit",
+    "report": "playwright show-report"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
     "@playwright/test": "^1.64.1",
-    "@types/node": "^26.6.5"
+    "@types/node": "^26.6.5",
+    "typescript": "^5.9.3"
   }
 }
