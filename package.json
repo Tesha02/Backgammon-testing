@@ -1,12 +1,16 @@
 {
   "name": "tests",
   "version": "1.0.0",
-  "description": "Playwright API tests for the local Backgammon application",
+  "description": "Playwright API, UI and two-player E2E tests for the local Backgammon application",
   "main": "index.js",
   "scripts": {
-    "test": "playwright test --project=api",
+    "test": "playwright test",
     "test:api": "playwright test --project=api",
-    "test:ui-mode": "playwright test --project=api --ui",
+    "test:ui": "playwright test --project=ui-chromium",
+    "test:ui:headed": "playwright test --project=ui-chromium --headed",
+    "test:e2e": "playwright test --project=e2e-chromium",
+    "test:e2e:headed": "playwright test --project=e2e-chromium --headed",
+    "test:ui-mode": "playwright test --ui",
     "typecheck": "tsc --noEmit",
     "report": "playwright show-report"
   },

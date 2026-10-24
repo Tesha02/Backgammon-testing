@@ -26,15 +26,19 @@ function apiObjects(request: APIRequestContext) {
   };
 }
 
-type ApiObjects = ReturnType<typeof apiObjects>;
+export type ApiObjects = ReturnType<typeof apiObjects>;
 
 interface RegisteredUser {
   data: RegisterRequest;
   profile: UserResponse;
 }
 
-interface TestUser extends RegisteredUser {
+export interface TestUser extends RegisteredUser {
   api: ApiObjects;
+}
+
+export interface AuthenticatedTestUser extends TestUser {
+  token: string;
 }
 
 interface TrackedRoom {
@@ -45,13 +49,20 @@ interface TrackedRoom {
 interface ApiScenario {
   api: ApiObjects;
   registerUser(): Promise<RegisteredUser>;
-  createUser(): Promise<TestUser>;
+  createUser(): Promise<AuthenticatedTestUser>;
   apiForToken(token: string): Promise<ApiObjects>;
+  trackRoom(host: TestUser, id: number): void;
   createRoom(host: TestUser, name: string): Promise<APIResponse>;
 }
 
 async function cleanRoom({ id, owner }: TrackedRoom): Promise<void> {
   const detailsResponse = await owner.api.rooms.details(id);
+  if (detailsResponse.status() === 404) {
+    const currentResponse = await owner.api.rooms.current();
+    expect(currentResponse.status(), `Cleanup: host of deleted room ${id} has no active room`)
+      .toBe(204);
+    return;
+  }
   expect(detailsResponse.status(), `Cleanup: GET /api/rooms/${id}`).toBe(200);
   const room: RoomResponse = await detailsResponse.json();
   expect(room.id, 'Cleanup must target the tracked room').toBe(id);
@@ -104,13 +115,13 @@ async function cleanRoom({ id, owner }: TrackedRoom): Promise<void> {
 }
 
 export const test = base.extend<{ scenario: ApiScenario }>({
-  scenario: async ({ playwright, baseURL }, use) => {
+  scenario: async ({ playwright }, use) => {
     const contexts: APIRequestContext[] = [];
     const rooms: TrackedRoom[] = [];
 
     async function newApi(token?: string): Promise<ApiObjects> {
       const context = await playwright.request.newContext({
-        baseURL,
+        baseURL: process.env.API_BASE_URL || 'http://localhost:8080',
         timeout: 10_000,
         failOnStatusCode: false,
         extraHTTPHeaders: token ? { Authorization: `Bearer ${token}` } : {},
@@ -139,6 +150,12 @@ export const test = base.extend<{ scenario: ApiScenario }>({
         api,
         registerUser,
         apiForToken: newApi,
+        trackRoom(host, id) {
+          expect(Number.isSafeInteger(id) && id > 0, 'Track created room ID').toBe(true);
+          if (!rooms.some(room => room.id === id)) {
+            rooms.push({ id, owner: host });
+          }
+        },
         async createUser() {
           const user = await registerUser();
           const response = await api.auth.login({
@@ -151,16 +168,14 @@ export const test = base.extend<{ scenario: ApiScenario }>({
           expect(typeof body.token, 'Setup: login token must be a string').toBe('string');
           expect(body.token.trim().length > 0, 'Setup: login token must not be empty').toBe(true);
           expect(body.username, 'Setup: login must use the intended user').toBe(user.profile.username);
-          return { ...user, api: await newApi(body.token) };
+          return { ...user, token: body.token, api: await newApi(body.token) };
         },
         async createRoom(host, name) {
           const response = await host.api.rooms.create({ name });
           // Track successful creation before the scenario can fail its business assertions.
           if (response.ok()) {
             const room: RoomResponse = await response.json();
-            expect(Number.isSafeInteger(room.id) && room.id > 0, 'Track created room ID')
-              .toBe(true);
-            rooms.push({ id: room.id, owner: host });
+            scenario.trackRoom(host, room.id);
           }
           return response;
         },

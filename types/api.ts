@@ -60,12 +60,45 @@ export interface RoomDetailsResponse extends RoomResponse {
   players: RoomPlayerResponse[];
 }
 
+export interface GameState {
+  points: number[];
+  whiteBar: number;
+  blackBar: number;
+  whiteOff: number;
+  blackOff: number;
+  dice: number[];
+}
+
+export interface GamePlayerResponse {
+  id: number;
+  gameId: number;
+  userId: number;
+  username: string;
+  color: 'WHITE' | 'BLACK';
+  winner: boolean;
+}
+
+export interface LegalMoveResponse {
+  fromPosition: number;
+  toPosition: number;
+  diceValue: number;
+}
+
+export interface MoveResponse extends LegalMoveResponse {
+  id: number;
+  gameId: number;
+  gamePlayerId: number;
+  turnNumber: number;
+  moveNumber: number;
+  createdAt: string;
+}
+
 export interface GameResponse {
   id: number;
   roomId: number;
   status: 'IN_PROGRESS' | 'FINISHED' | 'ABANDONED';
   currentTurnUserId: number | null;
-  currentState: unknown;
+  currentState: GameState;
   turnNumber: number;
   turnDeadline: string | null;
   startedAt: string;
